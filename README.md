@@ -46,6 +46,9 @@ You can add as many roles as you wish.
 
 Finally, you need to tag the item as `aws-credentials` - this allows `op-aws-vault` to find it.
 
+It should look similar to:
+
+![Example Configuration](images/example.png "Example Configuration")
 ## Usage
 
 Each command requires a `role` as the first positional argument.
