@@ -10,7 +10,7 @@ from typing import List, Optional
 import boto3
 import subprocess
 import json
-from pytimeparse import parse
+from pytimeparse2 import parse
 
 from botocore.exceptions import ClientError
 

@@ -4,12 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "op-aws-vault"
-version = "0.0.4"
+version = "0.0.5"
 dependencies = [
     "boto3",
     "requests",
     "typer",
-    "pytimeparse"
+    "pytimeparse2"
 ]
 requires-python = ">=3.8"
 description = "1Password aws-vault like utility"
