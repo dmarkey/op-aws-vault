@@ -13,6 +13,15 @@ dependencies = [
 ]
 requires-python = ">=3.8"
 description = "1Password aws-vault like utility"
+readme = "README.md"
+authors = [
+  { name = "David Markey", email = "david@dmarkey.com" },
+]
+
+[project.urls]
+"Homepage" = "https://github.com/dmarkey/op-aws-vault"
+"Bug Tracker" = "https://github.com/dmarkey/op-aws-vault/issues"
+
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/op_aws_vault"]
