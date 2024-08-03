@@ -44,7 +44,7 @@ For example if you have a `dev` role, you would add a text attribute to 1Passwor
 
 You can add as many roles as you wish.
 
-Finally, you need to tag the item as `aws-credential` this allows `op-aws-vault` to find it.
+Finally, you need to tag the item as `aws-credentials` - this allows `op-aws-vault` to find it.
 
 ## Usage
 
