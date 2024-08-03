@@ -1,6 +1,6 @@
 # op-aws-vault
 
-A aws-vault like utility built complete on 1Password.
+A aws-vault like utility built completely on 1Password.
 
 ## What is it?
 
