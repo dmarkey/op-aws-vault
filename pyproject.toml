@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "op-aws-vault"
+version = "0.0.1"
+dependencies = [
+    "boto3",
+    "requests",
+    "typer",
+    "pytimeparse"
+]
+requires-python = ">=3.8"
+description = "1Password aws-vault like utility"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/op_aws_vault"]
+
+[project.scripts]
+op-aws-vault = "op_aws_vault:main_cli"
