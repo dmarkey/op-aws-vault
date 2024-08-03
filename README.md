@@ -50,14 +50,17 @@ Finally, you need to tag the item as `aws-credential` this allows `op-aws-vault`
 
 Each command requires a `role` as the first positional argument.
 
-
 It can be any of the `role-{name}` roles in your 1Password or `default` for the top-level role.
+
+Expect for 1Password to verify your identity at least once per session.
 
 All commands accept the following optional arguments
 
 `--region` AWS region to operate against
 
 `--duration` Duration for session to be valid for. (1hr, 120mins etc.)
+
+
 
 ## op-aws-vault exec
 
