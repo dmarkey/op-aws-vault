@@ -36,8 +36,8 @@ You need to set up a 1Password item with the following attribute names (exactly)
 * `secret access key` (AWS Secret Key)
 * `mfa serial` (MFA Serial ARN - Optional with MFA - Recommended!)
 * `one-time password` (TOTP Required for MFA)
-* `default-region` (Default Region(default-region))
-* 
+* `default-region` (Default Region)
+
 To assume roles you need to add text attributes with the ARNs of roles to assume with a `role-{role name}` pattern.
 
 For example if you have a `dev` role, you would add a text attribute to 1Password item called `role-dev` and make the value the ARN of the role.
