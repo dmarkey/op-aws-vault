@@ -10,9 +10,15 @@ from typing import List, Optional
 import boto3
 import subprocess
 import json
+import platform
 from pytimeparse2 import parse
 
 from botocore.exceptions import ClientError
+
+ONEPASSWORD_CLI = "op"
+
+if os.name == "nt" or "WSL2" in platform.uname().release:
+    ONEPASSWORD_CLI = "op.exe"
 
 
 def get_aws_context(config, role, duration, region):
@@ -33,6 +39,8 @@ def get_aws_context(config, role, duration, region):
             response = sts.get_session_token(**kwargs)
             return response['Credentials']
         else:
+            if role not in config['roles']:
+                raise typer.BadParameter(f"Role {role} doesn't exist in 1Password")
             kwargs['RoleArn'] = config['roles'][role]
             kwargs['RoleSessionName'] = "op-aws-vault"
             response = sts.assume_role(**kwargs)
@@ -64,9 +72,9 @@ def tag_callback(tag: str):
     if ":" in tag:
         vault = tag.split(":")[0]
         tag = tag[len(vault) + 1:]
-        args = ["op", "item", "list", "--tags", tag, "--format=json", "--vault", vault]
+        args = [ONEPASSWORD_CLI, "item", "list", "--tags", tag, "--format=json", "--vault", vault]
     else:
-        args = ["op", "item", "list", "--tags", tag, "--format=json"]
+        args = [ONEPASSWORD_CLI, "item", "list", "--tags", tag, "--format=json"]
     try:
         resp = subprocess.check_output(args)
     except subprocess.CalledProcessError as e:
@@ -79,7 +87,7 @@ def tag_callback(tag: str):
         raise typer.BadParameter(f"More than 1 item returned from 1Password for {tag}")
     try:
         values = json.loads(
-            subprocess.check_output(["op", "item", "get", items[0]['id'], "--format", "json"]))
+            subprocess.check_output([ONEPASSWORD_CLI, "item", "get", items[0]['id'], "--format", "json"]))
         indexed = {x['label']: x for x in values['fields']}
         mfa_serial = totp = None
         if "mfa serial" in indexed:
@@ -115,7 +123,7 @@ def _exec(role: str, command: Annotated[List[str], typer.Argument()] = None,
     os.environ['AWS_SESSION_TOKEN'] = credentials['SessionToken']
     os.environ['AWS_DEFAULT_REGION'] = region if region else tag['credentials']['region']
     os.environ.pop("AWS_CREDENTIAL_EXPIRATION", None)
-    os.execvp(command[0], command)
+    subprocess.run(command)
 
 
 @app.command("login")
