@@ -20,6 +20,11 @@ ONEPASSWORD_CLI = "op"
 if os.name == "nt" or "WSL2" in platform.uname().release:
     ONEPASSWORD_CLI = "op.exe"
 
+if os.name == "nt":
+    DEFAULT_SHELL = "cmd.exe"
+else:
+    DEFAULT_SHELL = os.environ['SHELL']
+
 
 def get_aws_context(config, role, duration, region):
     if region is None:
@@ -51,7 +56,7 @@ def get_aws_context(config, role, duration, region):
             f"please check your credentials and or OTP.({e.response['Error']['Message']})")
 
 
-app = typer.Typer()
+app = typer.Typer(pretty_exceptions_show_locals=False)
 
 
 def duration_callback(time):
@@ -116,7 +121,7 @@ def _exec(role: str, command: Annotated[List[str], typer.Argument()] = None,
           duration: Annotated[str, typer.Option(callback=duration_callback)] = "1h"
           ):
     if not command:
-        command = [os.environ['SHELL']]
+        command = [DEFAULT_SHELL]
     credentials = get_aws_context(tag, role, duration, region)
     os.environ['AWS_ACCESS_KEY_ID'] = credentials['AccessKeyId']
     os.environ['AWS_SECRET_ACCESS_KEY'] = credentials['SecretAccessKey']

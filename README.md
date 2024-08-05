@@ -8,7 +8,7 @@ Irritated by no aws-vault 1Password integration and finding 1Password AWS plugin
 
 It's a small python script/utility that emulates the behaviour of `aws-vault` but completely integrated in 1Password. It wraps around the 1Password CLI.
 
-It requires a 1Password account and 1Password CLI. It's tested on MacOS and Linux. Probably doesnt work on Windows.
+It requires a 1Password account and 1Password CLI. It's tested on MacOS, Linux, Windows and WSL2
 
 It uses your AWS credentials and OTP key as a means to accomplish the following:
 
