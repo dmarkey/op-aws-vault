@@ -1,90 +1,125 @@
-# op-aws-vault
+# op-aws-vault 🚀
 
-A aws-vault like utility built completely on 1Password.
+A handy `aws-vault`-like utility built entirely on 1Password!
 
-## What is it?
+## 🤔 What is it?
 
-Irritated by no aws-vault 1Password integration and finding 1Password AWS plugin a bit buggy, this was an itch I wanted to scratch.
+Ever wished `aws-vault` played nicely with 1Password? Or found the official 1Password AWS plugin a little... quirky? This tool scratches that itch! ✨
 
-It's a small python script/utility that emulates the behaviour of `aws-vault` but completely integrated in 1Password. It wraps around the 1Password CLI.
+It's a small Python script that mimics `aws-vault`'s core behavior but integrates seamlessly with your 1Password vault. It leverages the power of the 1Password CLI (`op`).
 
-It requires a 1Password account and 1Password CLI. It's tested on MacOS, Linux, Windows and WSL2
+**Prerequisites:**
+*   A 1Password account
+*   The 1Password CLI (`op`) installed and configured
+*   The 1Password desktop app running and unlocked
 
-It uses your AWS credentials and OTP key as a means to accomplish the following:
+Tested and working on macOS, Linux, Windows, and WSL2! ✅
 
-* Exec into a shell with a (MFA'd) session of any role you can assume
-* Login to the AWS console via Federation
+**Core Features:**
+*   🔑 Execute commands or open a shell with temporary AWS credentials (including MFA support!) for any role you can assume.
+*   🌐 Log in to the AWS Management Console via federation with a single command.
 
+No more juggling configuration files! All settings – AWS credentials, OTP secrets, and assumable roles – live securely within your 1Password vault. Set it up once, use it everywhere! 🌍
 
-It requires no on-disk configuration, all configuration is set up in 1Password, including roles to assume, AWS creds and One-Time-Password.
+## 🛠️ How to install
 
-This means if you interact with AWS on different computers, you only need to set this up once in 1Password, no config setup, no key imports.
+1.  Create a Python Virtual Environment (recommended):
+    ```bash
+    python -m venv .venv
+    source .venv/bin/activate # On Linux/macOS
+    # .\.venv\Scripts\activate # On Windows
+    ```
+2.  Install using pip:
+    ```bash
+    pip install op-aws-vault
+    ```
 
+**Tip:** You might want to disable the 1Password AWS integration (`unalias aws` in your shell profile if needed) to avoid potential conflicts.
 
-## How to install
+## ⚙️ Setup in 1Password
 
-Create Python Virtual Environment and `pip install op-aws-vault`
+Create a new **Login** item (or use an existing one) in 1Password and add the following fields with these exact labels:
 
-You need to have the 1Password CLI and GUI open and unlocked for it to work.
+*   `access key id` (Your AWS Access Key ID)
+*   `secret access key` (Your AWS Secret Access Key)
+*   `mfa serial` (Your MFA device ARN, e.g., `arn:aws:iam::123456789012:mfa/YourUser`. Recommended!)
+*   `one-time password` (Link this to the TOTP secret for your MFA device)
+*   `default-region` (e.g., `us-east-1`, `eu-west-1`)
+*   `session name` (Optional: A custom name for the AWS session. Defaults to `op-aws-vault` if omitted)
 
-You may want to disable the 1Password aws plugin (`unalias aws`) as I find it interferes.
-## Setup
+**Adding Assumable Roles:**
 
-You need to set up a 1Password item with the following attribute names (exactly):
+For each AWS role you want to assume, add a **Text** field with the label following the pattern `role-{your-role-name}`. The value should be the full ARN of the role.
 
-* `access key id`(AWS Key ID)
-* `secret access key` (AWS Secret Key)
-* `mfa serial` (MFA Serial ARN - Optional with MFA - Recommended!)
-* `one-time password` (TOTP Required for MFA)
-* `default-region` (Default Region)
+*Example:*
+*   Label: `role-developer`
+*   Value: `arn:aws:iam::987654321098:role/DeveloperRole`
 
-To assume roles you need to add text attributes with the ARNs of roles to assume with a `role-{role name}` pattern.
+Add as many roles as you need!
 
-For example if you have a `dev` role, you would add a text attribute to 1Password item called `role-dev` and make the value the ARN of the role.
+**Tagging:**
 
-You can add as many roles as you wish.
+Finally, add the tag `aws-credentials` to this 1Password item. This is how `op-aws-vault` finds your configuration.
 
-Finally, you need to tag the item as `aws-credentials` - this allows `op-aws-vault` to find it.
-
-It should look similar to:
+Your item should look something like this:
 
 ![Example Configuration](images/example.png "Example Configuration")
-## Usage
 
-Each command requires a `role` as the first positional argument.
+## 🚀 Usage
 
-It can be any of the `role-{name}` roles in your 1Password or `default` for the top-level role.
+All commands require the `role` name as the first argument. This can be:
+*   The name you defined after `role-` (e.g., `developer` from the example above).
+*   `default` to use the base credentials directly (MFA will still be used if configured).
 
-Expect for 1Password to verify your identity at least once per session.
+Expect 1Password to prompt for authentication periodically.
 
-All commands accept the following optional arguments
+**Common Optional Arguments:**
 
-`--region` AWS region to operate against
+*   `--region <aws-region>`: Specify the AWS region for the command (overrides `default-region`).
+*   `--duration <duration>`: Set the session validity period (e.g., `15m`, `1h`, `8h`). Defaults to `1h`.
 
-`--duration` Duration for session to be valid for. (1hr, 120mins etc.)
+---
 
+### `op-aws-vault exec` 💻
 
+Opens an authenticated shell or runs a command with the specified role's credentials.
 
-## op-aws-vault exec
+**Examples:**
 
-This opens an authenticated shell with the role you choose
+*   Open your default shell with the `developer` role credentials:
+    ```bash
+    op-aws-vault exec developer
+    ```
+*   Run a specific command (`aws s3 ls`) with the `developer` role:
+    ```bash
+    op-aws-vault exec developer -- aws s3 ls
+    ```
+*   Open a specific shell (`/bin/bash`) with the `default` credentials:
+    ```bash
+    op-aws-vault exec default -- /bin/bash
+    ```
 
-`op-aws-vault exec <role name>`
+Unlike the original `aws-vault`, `op-aws-vault` sessions can be safely nested if needed.
 
-`op-aws-vault exec dev` would open a shell with
+---
 
-`op-aws-vault exec dev -- /bin/bash` would open a bash shell explicitly
+### `op-aws-vault login` 🌐
 
-Unlike `aws-vault`, `op-aws-vault` can be safely nested.
+Generates a federated login URL for the AWS Management Console and opens it in your default web browser.
 
+**Example:**
 
+*   Log in to the console as the `developer` role:
+    ```bash
+    op-aws-vault login developer
+    ```
 
-## op-aws-vault login
+**Get URL Only:**
 
-`op-aws-vault login dev` to open a web browser with a federated console Login for the `dev` role.
+If you prefer to copy the URL instead of opening a browser, use the `--stdout` flag:
+```bash
+op-aws-vault login developer --stdout
+```
 
-If you'd prefer to not open a browser, just get the URL, use the `--stdout` option to print to console.
-
-
-
-
+---
+Happy vaulting! 🎉
