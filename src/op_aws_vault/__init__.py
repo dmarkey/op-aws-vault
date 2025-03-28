@@ -12,6 +12,7 @@ import subprocess
 import json
 import platform
 from pytimeparse2 import parse
+import datetime # Added for formatting expiration time
 
 from botocore.exceptions import ClientError
 
@@ -42,14 +43,16 @@ def get_aws_context(config, role, duration, region):
 
         if role == "default":
             response = sts.get_session_token(**kwargs)
-            return response['Credentials']
+            # Return the full response which includes 'Credentials' and 'Expiration'
+            return response
         else:
             if role not in config['roles']:
                 raise typer.BadParameter(f"Role {role} doesn't exist in 1Password")
             kwargs['RoleArn'] = config['roles'][role]
             kwargs['RoleSessionName'] = config['credentials']['session_name'] # Use session name from config
             response = sts.assume_role(**kwargs)
-            return response['Credentials']
+             # Return the full response which includes 'Credentials' and 'Expiration'
+            return response
     except ClientError as e:
         raise Exception(
             f"Error communicating with AWS, "
@@ -60,15 +63,19 @@ app = typer.Typer(pretty_exceptions_show_locals=False)
 
 
 def duration_callback(time):
+    if time is None:
+        return None # Handle case where --duration is not provided
     try:
+        # Try parsing as integer seconds first
         return int(time)
     except ValueError:
+        # If not an integer, try parsing as time string (e.g., "1h", "30m")
         pass
 
     parsed_time = parse(time)
 
     if not parsed_time:
-        raise typer.BadParameter("Invalid time parameter.")
+        raise typer.BadParameter(f"Invalid time parameter format: '{time}'")
 
     return parsed_time
 
@@ -105,6 +112,15 @@ def tag_callback(tag: str):
         if "session name" in indexed:
             session_name = indexed["session name"]["value"]
 
+        # Read session duration from 1Password item
+        session_duration = None
+        if "session duration" in indexed:
+            try:
+                session_duration = duration_callback(indexed["session duration"]["value"])
+            except typer.BadParameter as e:
+                # Raise error if duration format in 1Password item is invalid
+                raise typer.BadParameter(f"Invalid format for 'session duration' field in 1Password item tagged '{tag}': {e}")
+
         roles = {i['label'][5:]: i['value'] for i in indexed.values() if i['label'].startswith('role-')}
         return {"credentials": {"aws_access_key_id": indexed['access key id']['value'],
                                 "aws_secret_access_key": indexed['secret access key']['value'],
@@ -113,7 +129,9 @@ def tag_callback(tag: str):
                                 "region": region,
                                 "session_name": session_name # Add session name here
                                 },
-                "roles": roles}
+                "roles": roles,
+                "session_duration": session_duration # Add session duration here
+                }
     except KeyError as e:
         raise typer.BadParameter(f"1Password item tagged {tag} missing item '{e.args[0]}'")
 
@@ -122,16 +140,30 @@ def tag_callback(tag: str):
 def _exec(role: str, command: Annotated[List[str], typer.Argument()] = None,
           region: str = None,
           tag: Annotated[Optional[str], typer.Option(callback=tag_callback)] = "aws-credentials",
-          duration: Annotated[str, typer.Option(callback=duration_callback)] = "1h"
+          duration: Annotated[Optional[str], typer.Option(callback=duration_callback)] = None # Default handled below
           ):
     if not command:
         command = [DEFAULT_SHELL]
-    credentials = get_aws_context(tag, role, duration, region)
+
+    # Determine effective duration: CLI > 1Password > Default (1h)
+    effective_duration = duration # CLI duration (already parsed by callback)
+    if effective_duration is None and tag.get("session_duration") is not None:
+        effective_duration = tag["session_duration"] # 1Password duration (already parsed)
+    if effective_duration is None:
+        effective_duration = duration_callback("1h") # Default duration
+
+    aws_response = get_aws_context(tag, role, effective_duration, region)
+    credentials = aws_response['Credentials'] # Credentials are in a nested dict
+
+    # Format the expiration time
+    expiration_dt = credentials['Expiration']
+    expiration_str = expiration_dt.strftime('%Y-%m-%dT%H:%M:%SZ')
+
     os.environ['AWS_ACCESS_KEY_ID'] = credentials['AccessKeyId']
     os.environ['AWS_SECRET_ACCESS_KEY'] = credentials['SecretAccessKey']
     os.environ['AWS_SESSION_TOKEN'] = credentials['SessionToken']
     os.environ['AWS_DEFAULT_REGION'] = region if region else tag['credentials']['region']
-    os.environ.pop("AWS_CREDENTIAL_EXPIRATION", None)
+    os.environ['AWS_CREDENTIAL_EXPIRATION'] = expiration_str # Set the expiration env var
     subprocess.run(command)
 
 
@@ -139,9 +171,16 @@ def _exec(role: str, command: Annotated[List[str], typer.Argument()] = None,
 def login(role: str, tag: Annotated[Optional[str], typer.Option(callback=tag_callback)] = "aws-credentials",
           region: str = None,
           stdout: bool = False,
-          duration: Annotated[str, typer.Option(callback=duration_callback)] = "1h"
+          duration: Annotated[Optional[str], typer.Option(callback=duration_callback)] = None # Default handled below
           ):
-    credentials = get_aws_context(tag, role, duration, region)
+    # Determine effective duration: CLI > 1Password > Default (1h)
+    effective_duration = duration # CLI duration (already parsed by callback)
+    if effective_duration is None and tag.get("session_duration") is not None:
+        effective_duration = tag["session_duration"] # 1Password duration (already parsed)
+    if effective_duration is None:
+        effective_duration = duration_callback("1h") # Default duration
+
+    credentials = get_aws_context(tag, role, effective_duration, region)
     session_data = {
         "sessionId": credentials["AccessKeyId"],
         "sessionKey": credentials["SecretAccessKey"],
@@ -156,7 +195,7 @@ def login(role: str, tag: Annotated[Optional[str], typer.Option(callback=tag_cal
         aws_federated_signin_endpoint,
         params={
             "Action": "getSigninToken",
-            "SessionDuration": duration,
+            "SessionDuration": effective_duration, # Use effective duration here
             "Session": json.dumps(session_data),
         },
     )

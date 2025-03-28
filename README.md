@@ -46,6 +46,7 @@ Create a new **Login** item (or use an existing one) in 1Password and add the fo
 *   `one-time password` (Link this to the TOTP secret for your MFA device)
 *   `default-region` (e.g., `us-east-1`, `eu-west-1`)
 *   `session name` (Optional: A custom name for the AWS session. Defaults to `op-aws-vault` if omitted)
+*   `session duration` (Optional: Set the default session duration, e.g., `15m`, `1h`, `8h`. Overridden by the `--duration` command-line option. Defaults to `1h` if neither is set.)
 
 **Adding Assumable Roles:**
 
