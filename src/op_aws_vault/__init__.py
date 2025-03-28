@@ -47,7 +47,7 @@ def get_aws_context(config, role, duration, region):
             if role not in config['roles']:
                 raise typer.BadParameter(f"Role {role} doesn't exist in 1Password")
             kwargs['RoleArn'] = config['roles'][role]
-            kwargs['RoleSessionName'] = "op-aws-vault"
+            kwargs['RoleSessionName'] = config['credentials']['session_name'] # Use session name from config
             response = sts.assume_role(**kwargs)
             return response['Credentials']
     except ClientError as e:
@@ -101,13 +101,17 @@ def tag_callback(tag: str):
         region = "us-east-1"
         if "default-region" in indexed:
             region = indexed["default-region"]["value"]
+        session_name = "op-aws-vault" # Default session name
+        if "session name" in indexed:
+            session_name = indexed["session name"]["value"]
 
         roles = {i['label'][5:]: i['value'] for i in indexed.values() if i['label'].startswith('role-')}
         return {"credentials": {"aws_access_key_id": indexed['access key id']['value'],
                                 "aws_secret_access_key": indexed['secret access key']['value'],
                                 "mfa_serial": mfa_serial,
                                 "totp": totp,
-                                "region": region
+                                "region": region,
+                                "session_name": session_name # Add session name here
                                 },
                 "roles": roles}
     except KeyError as e:
