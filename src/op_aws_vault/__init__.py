@@ -137,8 +137,8 @@ def tag_callback(tag: str):
 
 
 @app.command("exec")
-def _exec(role: str, command: Annotated[List[str], typer.Argument()] = None,
-          region: str = None,
+def _exec(role: str, command: Annotated[Optional[List[str]], typer.Argument()] = None,
+          region: Optional[str] = None,
           tag: Annotated[Optional[str], typer.Option(callback=tag_callback)] = "aws-credentials",
           duration: Annotated[Optional[str], typer.Option(callback=duration_callback)] = None # Default handled below
           ):
@@ -169,7 +169,7 @@ def _exec(role: str, command: Annotated[List[str], typer.Argument()] = None,
 
 @app.command("login")
 def login(role: str, tag: Annotated[Optional[str], typer.Option(callback=tag_callback)] = "aws-credentials",
-          region: str = None,
+          region: Optional[str] = None,
           stdout: bool = False,
           duration: Annotated[Optional[str], typer.Option(callback=duration_callback)] = None # Default handled below
           ):
@@ -180,7 +180,8 @@ def login(role: str, tag: Annotated[Optional[str], typer.Option(callback=tag_cal
     if effective_duration is None:
         effective_duration = duration_callback("1h") # Default duration
 
-    credentials = get_aws_context(tag, role, effective_duration, region)
+    aws_response = get_aws_context(tag, role, effective_duration, region)
+    credentials = aws_response['Credentials'] # Credentials are in a nested dict
     session_data = {
         "sessionId": credentials["AccessKeyId"],
         "sessionKey": credentials["SecretAccessKey"],
@@ -195,7 +196,7 @@ def login(role: str, tag: Annotated[Optional[str], typer.Option(callback=tag_cal
         aws_federated_signin_endpoint,
         params={
             "Action": "getSigninToken",
-            "SessionDuration": effective_duration, # Use effective duration here
+            "SessionDuration": str(effective_duration), # Use effective duration here
             "Session": json.dumps(session_data),
         },
     )
